@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.env
+.pytest_cache/
+.coverage
+htmlcov/
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Generated artifacts
+reports/*.png
+!reports/.gitkeep
+data/
+
+# Application logs
+logs/

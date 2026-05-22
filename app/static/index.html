@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Apple Store Review Analysis</title>
+  <style>
+    :root {
+      --bg: #f7f7f8;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --text: #111827;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --positive: #16a34a;
+      --neutral: #9ca3af;
+      --negative: #dc2626;
+      --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      font-size: 15px;
+    }
+    main { max-width: 1140px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+
+    /* ── Typography ─────────────────────────────────────────────────────── */
+    header { margin-bottom: 1.75rem; }
+    h1 { font-size: 1.75rem; font-weight: 700; margin: 0 0 .25rem; letter-spacing: -.02em; }
+    h2 { font-size: 1.15rem; font-weight: 600; margin: 0 0 .75rem; }
+    h3 { font-size: .95rem; font-weight: 600; margin: 1rem 0 .5rem; color: #374151; }
+    h4 { font-size: .875rem; font-weight: 600; margin: 0 0 .875rem; color: #374151; }
+    .subtitle { color: var(--muted); margin: 0; font-size: .95rem; }
+
+    /* ── Card ────────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: .75rem;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      box-shadow: var(--shadow);
+    }
+
+    /* ── Search form ─────────────────────────────────────────────────────── */
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr auto 80px auto;
+      gap: .625rem;
+      align-items: start;
+    }
+    @media (max-width: 720px) { .form-row { grid-template-columns: 1fr; } }
+    input, button { font-family: inherit; font-size: .95rem; }
+    input {
+      padding: .625rem .875rem;
+      border: 1px solid var(--border);
+      border-radius: .5rem;
+      background: white;
+      color: var(--text);
+    }
+    input::placeholder { color: #9ca3af; }
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    }
+    select {
+      padding: .625rem .875rem;
+      border: 1px solid var(--border);
+      border-radius: .5rem;
+      background: white;
+      color: var(--text);
+      font-family: inherit;
+      font-size: .95rem;
+      cursor: pointer;
+    }
+    select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    }
+
+    /* ── Multi-select storefront picker ─────────────────────────────────── */
+    .ms-wrap { position: relative; font-family: inherit; font-size: .95rem; }
+    .ms-trigger {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .625rem .875rem;
+      border: 1px solid var(--border);
+      border-radius: .5rem;
+      background: white;
+      color: var(--text);
+      cursor: pointer;
+      white-space: nowrap;
+      font-size: .95rem;
+      font-family: inherit;
+      min-width: 210px;
+    }
+    .ms-trigger:focus, .ms-trigger.open {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    }
+    .ms-trigger-label { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; }
+    .ms-chevron { flex-shrink: 0; transition: transform .2s; color: var(--muted); }
+    .ms-trigger.open .ms-chevron { transform: rotate(180deg); }
+    .ms-panel {
+      position: absolute;
+      top: calc(100% + .3rem);
+      left: 0;
+      width: 300px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: .625rem;
+      box-shadow: 0 8px 30px rgba(0,0,0,.13);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+    }
+    .ms-panel[hidden] { display: none; }
+    .ms-panel-head {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .625rem .75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .ms-search {
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: .375rem;
+      padding: .35rem .625rem;
+      font-size: .875rem;
+      font-family: inherit;
+      color: var(--text);
+    }
+    .ms-search:focus { outline: none; border-color: var(--primary); }
+    .ms-clear-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--primary);
+      font-size: .8rem;
+      padding: .25rem .375rem;
+      border-radius: .25rem;
+      white-space: nowrap;
+      font-family: inherit;
+    }
+    .ms-clear-btn:hover { background: #eff6ff; }
+    .ms-list {
+      max-height: 260px;
+      overflow-y: auto;
+      padding: .25rem 0;
+    }
+    .ms-item {
+      display: flex;
+      align-items: center;
+      gap: .625rem;
+      padding: .35rem .75rem;
+      cursor: pointer;
+      font-size: .875rem;
+      user-select: none;
+    }
+    .ms-item:hover { background: #f9fafb; }
+    .ms-item input[type="checkbox"] { cursor: pointer; accent-color: var(--primary); width: 15px; height: 15px; flex-shrink: 0; }
+    .ms-item label { cursor: pointer; flex: 1; }
+    .ms-count-row {
+      padding: .375rem .75rem;
+      border-top: 1px solid var(--border);
+      font-size: .75rem;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+    }
+    /* Selected chips below the form row */
+    .ms-chips-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .375rem;
+      margin-top: .5rem;
+    }
+    .ms-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1d4ed8;
+      border-radius: 1rem;
+      padding: .15rem .5rem .15rem .6rem;
+      font-size: .8rem;
+      font-weight: 500;
+    }
+    .ms-chip-remove {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #93c5fd;
+      font-size: .85rem;
+      padding: 0;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+    }
+    .ms-chip-remove:hover { color: #1d4ed8; }
+
+    /* ── Buttons ─────────────────────────────────────────────────────────── */
+    .btn {
+      padding: .625rem 1.25rem;
+      border-radius: .5rem;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all .15s;
+      border: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .btn-primary { background: var(--primary); color: white; border-color: var(--primary); }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); border-color: var(--primary-hover); }
+    .btn-secondary { background: white; color: var(--text); }
+    .btn-secondary:hover:not(:disabled) { background: #f9fafb; border-color: #d1d5db; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+    .actions[hidden] { display: none; }
+
+    /* ── App meta ────────────────────────────────────────────────────────── */
+    .app-meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+    }
+    .meta-item { display: flex; flex-direction: column; }
+    .meta-label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+    .meta-value { font-size: 1.05rem; font-weight: 500; margin-top: .125rem; }
+    .meta-value.big { font-size: 1.5rem; font-weight: 700; }
+
+    /* ── Bars ─────────────────────────────────────────────────────────────── */
+    .bar-row { display: grid; grid-template-columns: 100px 1fr 80px; gap: .75rem; align-items: center; margin-bottom: .375rem; }
+    .bar-label { font-size: .875rem; }
+    .bar-track { background: #f3f4f6; height: 1.5rem; border-radius: .25rem; overflow: hidden; }
+    .bar-fill { height: 100%; transition: width .5s ease-out; border-radius: .25rem 0 0 .25rem; }
+    .bar-fill.positive { background: var(--positive); }
+    .bar-fill.neutral  { background: var(--neutral); }
+    .bar-fill.negative { background: var(--negative); }
+    .bar-fill.star-5 { background: #16a34a; }
+    .bar-fill.star-4 { background: #84cc16; }
+    .bar-fill.star-3 { background: #eab308; }
+    .bar-fill.star-2 { background: #f97316; }
+    .bar-fill.star-1 { background: #dc2626; }
+    .bar-value { font-size: .875rem; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* ── Chips ───────────────────────────────────────────────────────────── */
+    .chips { display: flex; flex-wrap: wrap; gap: .375rem; margin: .5rem 0 0; }
+    .chip { background: #f3f4f6; padding: .25rem .625rem; border-radius: 1rem; font-size: .8125rem; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    .chip.negative { background: #fef2f2; color: #991b1b; }
+    .chip.positive { background: #f0fdf4; color: #166534; }
+
+    /* ── Domain cards ────────────────────────────────────────────────────── */
+    .domain-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: .875rem;
+      margin-top: .75rem;
+    }
+    .domain-card, .region-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: .5rem;
+      padding: 1rem;
+    }
+    .domain-card header, .region-card header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: .5rem;
+    }
+    .domain-name { font-weight: 600; font-size: .95rem; }
+    .severity {
+      display: inline-block;
+      padding: .125rem .5rem;
+      border-radius: .25rem;
+      font-size: .7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .severity.high   { background: #fef2f2; color: #991b1b; }
+    .severity.medium { background: #fff7ed; color: #9a3412; }
+    .severity.low    { background: #fefce8; color: #854d0e; }
+    .severity.none   { background: #f3f4f6; color: var(--muted); }
+    .summary { color: #374151; font-size: .9rem; margin: 0 0 .5rem; }
+    .recommendation {
+      background: #eff6ff;
+      border-left: 3px solid var(--primary);
+      padding: .5rem .75rem;
+      border-radius: 0 .375rem .375rem 0;
+      font-size: .875rem;
+      margin: .5rem 0;
+    }
+    .recommendation strong { color: var(--primary); }
+    .quote {
+      border-left: 2px solid var(--border);
+      padding-left: .75rem;
+      color: var(--muted);
+      font-style: italic;
+      font-size: .85rem;
+      margin: .25rem 0;
+    }
+    .key-issues { margin: .5rem 0 0; padding-left: 1.25rem; font-size: .875rem; color: #374151; }
+    .key-issues li { margin-bottom: .125rem; }
+
+    /* ── Region grid: always 2 columns ──────────────────────────────────── */
+    .region-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: .875rem;
+      margin-top: .75rem;
+    }
+    @media (max-width: 640px) { .region-grid { grid-template-columns: 1fr; } }
+
+    /* ── Actionable insights ─────────────────────────────────────────────── */
+    .actionable { list-style: none; padding: 0; margin: .75rem 0 0; counter-reset: insight; }
+    .actionable li {
+      counter-increment: insight;
+      padding: .75rem .875rem .75rem 2.5rem;
+      background: #fffbeb;
+      border-left: 3px solid #f59e0b;
+      border-radius: 0 .375rem .375rem 0;
+      margin-bottom: .5rem;
+      position: relative;
+      font-size: .9rem;
+    }
+    .actionable li::before {
+      content: counter(insight);
+      position: absolute;
+      left: .875rem;
+      top: .75rem;
+      width: 1.25rem;
+      height: 1.25rem;
+      background: #f59e0b;
+      color: white;
+      border-radius: 50%;
+      font-size: .75rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── VADER compound score ─────────────────────────────────────────────── */
+    .vader-score {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      margin-top: .625rem;
+      font-size: .875rem;
+      color: var(--text);
+    }
+    .vader-score .vader-label { color: var(--muted); }
+    .vader-score .vader-val {
+      font-weight: 700;
+      font-size: 1rem;
+      font-variant-numeric: tabular-nums;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    }
+    .vader-score .vader-val.pos { color: var(--positive); }
+    .vader-score .vader-val.neg { color: var(--negative); }
+    .vader-score .vader-val.neu { color: var(--muted); }
+    .vader-score .vader-tag {
+      font-size: .75rem;
+      padding: .1rem .4rem;
+      border-radius: .25rem;
+      font-weight: 500;
+    }
+    .vader-tag.pos { background: #f0fdf4; color: #166534; }
+    .vader-tag.neg { background: #fef2f2; color: #991b1b; }
+    .vader-tag.neu { background: #f3f4f6; color: var(--muted); }
+
+    /* ── Dashboard ───────────────────────────────────────────────────────── */
+    .dash-filter-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: .75rem;
+      padding-bottom: 1rem;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .dash-filter-row label { font-size: .8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    .dash-filter-row select { font-size: .875rem; padding: .4rem .75rem; padding-right: 2rem; }
+    .filter-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: var(--primary);
+      border-radius: 1rem;
+      padding: .2rem .65rem;
+      font-size: .8rem;
+      font-weight: 500;
+    }
+    .filter-chip .clear-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      font-size: .9rem;
+      color: var(--primary);
+      line-height: 1;
+    }
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media (max-width: 700px) { .chart-grid { grid-template-columns: 1fr; } }
+    .chart-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: .625rem;
+      padding: 1.125rem 1.25rem;
+    }
+    .chart-card canvas { display: block; width: 100% !important; }
+    .chart-note { font-size: .75rem; color: var(--muted); margin-top: .375rem; }
+
+    /* ── Reviews list ────────────────────────────────────────────────────── */
+    .review-search {
+      display: flex;
+      gap: .5rem;
+      margin-bottom: .875rem;
+    }
+    .review-search input { flex: 1; }
+    .review-list { display: flex; flex-direction: column; gap: .625rem; }
+    .review-item {
+      border: 1px solid var(--border);
+      border-radius: .5rem;
+      padding: .875rem 1rem;
+      background: white;
+    }
+    .review-item-header {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin-bottom: .375rem;
+    }
+    .review-stars { color: #f59e0b; font-size: .95rem; letter-spacing: -.05em; }
+    .review-country { font-size: .75rem; }
+    .review-version { font-size: .75rem; color: var(--muted); font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    .review-date { font-size: .75rem; color: var(--muted); margin-left: auto; }
+    .review-title { font-weight: 600; font-size: .9rem; margin-bottom: .25rem; }
+    .review-author { font-size: .8rem; color: var(--muted); margin-bottom: .375rem; }
+    .review-text { font-size: .875rem; color: #374151; line-height: 1.5; }
+    .review-text.clamped { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .expand-btn { background: none; border: none; cursor: pointer; color: var(--primary); font-size: .8rem; padding: 0; margin-top: .25rem; }
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
+      margin-top: 1rem;
+    }
+    .pagination .page-info { font-size: .875rem; color: var(--muted); }
+
+    /* ── Badge ───────────────────────────────────────────────────────────── */
+    .badge {
+      display: inline-block;
+      padding: .125rem .5rem;
+      background: #eef2ff;
+      color: #4338ca;
+      border-radius: .25rem;
+      font-size: .75rem;
+      font-weight: 500;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    }
+
+    /* ── Status / spinner ────────────────────────────────────────────────── */
+    .spinner {
+      display: inline-block;
+      width: .875rem;
+      height: .875rem;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      vertical-align: middle;
+      margin-right: .5rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .status { color: var(--muted); font-size: .875rem; margin-top: .5rem; }
+    .status[hidden], .error[hidden] { display: none; }
+    .error { color: var(--negative); font-size: .875rem; margin-top: .5rem; }
+
+    /* ── Misc ────────────────────────────────────────────────────────────── */
+    .row { display: flex; align-items: baseline; gap: .75rem; margin-bottom: .25rem; }
+    .footer-note { color: var(--muted); font-size: .8rem; text-align: center; margin-top: 3rem; }
+    .footer-note a { color: var(--primary); text-decoration: none; }
+    .footer-note a:hover { text-decoration: underline; }
+    .section-separator { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0 1rem; }
+
+    /* ── Tab navigation ──────────────────────────────────────────────────── */
+    .tab-bar {
+      display: flex;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 1.25rem;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .tab-bar::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      padding: .625rem 1.375rem;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      background: none;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: .925rem;
+      font-family: inherit;
+      color: var(--muted);
+      white-space: nowrap;
+      transition: color .15s, border-color .15s;
+    }
+    .tab-btn:hover:not(.active) { color: var(--text); }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+    .tab-panel[hidden] { display: none; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Apple Store Review Analysis</h1>
+  </header>
+
+  <section class="card">
+    <div class="form-row">
+      <input
+        id="app-input"
+        placeholder="App name (e.g. 'Spotify') or App Store ID (e.g. '324684580')"
+        autofocus
+      />
+
+      <!-- Custom multi-select storefront picker -->
+      <div class="ms-wrap" id="ms-wrap">
+        <button class="ms-trigger" id="ms-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+          <span class="ms-trigger-label" id="ms-label">🌍 All storefronts</span>
+          <svg class="ms-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="ms-panel" id="ms-panel" hidden role="listbox" aria-multiselectable="true">
+          <div class="ms-panel-head">
+            <input class="ms-search" id="ms-search" type="search" placeholder="Search countries…" autocomplete="off" />
+            <button class="ms-clear-btn" id="ms-clear" type="button">Clear all</button>
+          </div>
+          <div class="ms-list" id="ms-list"></div>
+          <div class="ms-count-row">
+            <span id="ms-count-label">155 storefronts available</span>
+            <span id="ms-selected-count"></span>
+          </div>
+        </div>
+      </div>
+
+      <input
+        id="count-input"
+        type="number"
+        value="100"
+        min="1"
+        max="500"
+        title="Number of reviews to collect (1–500)"
+      />
+      <button id="load-btn" class="btn btn-primary">Analyse</button>
+    </div>
+    <!-- Selected country chips appear here -->
+    <div class="ms-chips-row" id="ms-chips"></div>
+    <div id="status" class="status" hidden></div>
+    <div id="error"  class="error"  hidden></div>
+  </section>
+
+  <section id="app-info" class="card" hidden></section>
+
+  <!-- Tab bar — shown after reviews are loaded -->
+  <div id="tab-bar" class="tab-bar" hidden>
+    <button class="tab-btn active" data-tab="metrics">Metrics</button>
+    <button class="tab-btn" data-tab="insights">Insights &amp; Domain Analysis</button>
+    <button class="tab-btn" data-tab="dashboard">Dashboard</button>
+    <button class="tab-btn" data-tab="reviews">Reviews</button>
+  </div>
+
+  <!-- Tab panels -->
+  <div id="panel-metrics"  class="tab-panel"></div>
+  <div id="panel-insights" class="tab-panel" hidden></div>
+  <div id="panel-dashboard"class="tab-panel" hidden></div>
+  <div id="panel-reviews"  class="tab-panel" hidden></div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────────────────────
+const API = "/api/v1";
+const $ = (sel) => document.querySelector(sel);
+
+const COUNTRY_NAMES = {
+  ae:"United Arab Emirates", ag:"Antigua & Barbuda", ai:"Anguilla",
+  al:"Albania", am:"Armenia", ao:"Angola", ar:"Argentina",
+  at:"Austria", au:"Australia", az:"Azerbaijan",
+  bb:"Barbados", be:"Belgium", bf:"Burkina Faso", bg:"Bulgaria",
+  bh:"Bahrain", bj:"Benin", bm:"Bermuda", bn:"Brunei", bo:"Bolivia",
+  br:"Brazil", bs:"Bahamas", bt:"Bhutan", bw:"Botswana", by:"Belarus",
+  bz:"Belize", ca:"Canada", cg:"Congo", ch:"Switzerland",
+  ci:"Côte d'Ivoire", cl:"Chile", cn:"China", co:"Colombia",
+  cr:"Costa Rica", cv:"Cape Verde", cy:"Cyprus", cz:"Czech Republic",
+  de:"Germany", dk:"Denmark", dm:"Dominica", do:"Dominican Republic",
+  dz:"Algeria", ec:"Ecuador", ee:"Estonia", eg:"Egypt", es:"Spain",
+  fi:"Finland", fj:"Fiji", fm:"Micronesia", fr:"France",
+  ga:"Gabon", gb:"United Kingdom", gd:"Grenada", gh:"Ghana",
+  gm:"Gambia", gr:"Greece", gt:"Guatemala", gw:"Guinea-Bissau",
+  gy:"Guyana", hk:"Hong Kong", hn:"Honduras", hr:"Croatia",
+  hu:"Hungary", id:"Indonesia", ie:"Ireland", il:"Israel",
+  in:"India", is:"Iceland", it:"Italy", jm:"Jamaica", jo:"Jordan",
+  jp:"Japan", ke:"Kenya", kg:"Kyrgyzstan", kh:"Cambodia",
+  kn:"St. Kitts & Nevis", kr:"South Korea", kw:"Kuwait",
+  ky:"Cayman Islands", kz:"Kazakhstan", la:"Laos", lb:"Lebanon",
+  lc:"St. Lucia", lk:"Sri Lanka", lr:"Liberia", lt:"Lithuania",
+  lu:"Luxembourg", lv:"Latvia", md:"Moldova", mg:"Madagascar",
+  mk:"North Macedonia", ml:"Mali", mn:"Mongolia", mo:"Macao",
+  mr:"Mauritania", ms:"Montserrat", mt:"Malta", mu:"Mauritius",
+  mw:"Malawi", mx:"Mexico", my:"Malaysia", mz:"Mozambique",
+  na:"Namibia", ne:"Niger", ng:"Nigeria", ni:"Nicaragua",
+  nl:"Netherlands", no:"Norway", np:"Nepal", nz:"New Zealand",
+  om:"Oman", pa:"Panama", pe:"Peru", pg:"Papua New Guinea",
+  ph:"Philippines", pk:"Pakistan", pl:"Poland", pt:"Portugal",
+  pw:"Palau", py:"Paraguay", qa:"Qatar", ro:"Romania",
+  rs:"Serbia", ru:"Russia", sa:"Saudi Arabia", sb:"Solomon Islands",
+  sc:"Seychelles", se:"Sweden", sg:"Singapore", si:"Slovenia",
+  sk:"Slovakia", sl:"Sierra Leone", sn:"Senegal", sr:"Suriname",
+  sv:"El Salvador", tc:"Turks & Caicos", td:"Chad", th:"Thailand",
+  tj:"Tajikistan", tm:"Turkmenistan", tn:"Tunisia", tr:"Turkey",
+  tt:"Trinidad & Tobago", tw:"Taiwan", tz:"Tanzania",
+  ua:"Ukraine", ug:"Uganda", us:"United States", uy:"Uruguay",
+  uz:"Uzbekistan", vc:"St. Vincent & Grenadines", ve:"Venezuela",
+  vg:"British Virgin Islands", vn:"Vietnam", ye:"Yemen",
+  za:"South Africa", zw:"Zimbabwe",
+};
+
+function countryName(code) {
+  if (!code) return "—";
+  return COUNTRY_NAMES[code.toLowerCase()] || code.toUpperCase();
+}
+function countryFlag(code) {
+  if (!code || code.length !== 2) return "";
+  return String.fromCodePoint(
+    0x1F1E6 + code.toLowerCase().charCodeAt(0) - 97,
+    0x1F1E6 + code.toLowerCase().charCodeAt(1) - 97
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Multi-select storefront picker
+// ─────────────────────────────────────────────────────────────────────────────
+const selectedCountries = new Set(); // currently checked codes
+
+(function buildMultiSelect() {
+  const list = $("#ms-list");
+  const sorted = Object.entries(COUNTRY_NAMES).sort((a, b) => a[1].localeCompare(b[1]));
+
+  function renderItems(filter = "") {
+    list.innerHTML = "";
+    const q = filter.toLowerCase();
+    let visible = 0;
+    for (const [code, name] of sorted) {
+      const label = `${countryFlag(code)} ${name}`;
+      if (q && !name.toLowerCase().includes(q) && !code.includes(q)) continue;
+      visible++;
+      const item = document.createElement("div");
+      item.className = "ms-item";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.id = `ms-cb-${code}`;
+      cb.value = code;
+      cb.checked = selectedCountries.has(code);
+      const lbl = document.createElement("label");
+      lbl.htmlFor = `ms-cb-${code}`;
+      lbl.textContent = label;
+      item.appendChild(cb);
+      item.appendChild(lbl);
+      item.addEventListener("click", (e) => {
+        if (e.target !== cb) cb.checked = !cb.checked;
+        if (cb.checked) selectedCountries.add(code);
+        else selectedCountries.delete(code);
+        syncMultiSelect();
+      });
+      list.appendChild(item);
+    }
+    if (visible === 0) {
+      const empty = document.createElement("div");
+      empty.style.cssText = "padding:.75rem;color:var(--muted);font-size:.875rem;text-align:center";
+      empty.textContent = "No countries match";
+      list.appendChild(empty);
+    }
+    $("#ms-count-label").textContent = `${visible} storefront${visible !== 1 ? "s" : ""} shown`;
+  }
+
+  function syncMultiSelect() {
+    const n = selectedCountries.size;
+    // Update trigger label
+    const label = $("#ms-label");
+    if (n === 0) {
+      label.textContent = "🌍 All storefronts";
+    } else if (n === 1) {
+      const code = [...selectedCountries][0];
+      label.textContent = `${countryFlag(code)} ${countryName(code)}`;
+    } else if (n <= 4) {
+      label.textContent = [...selectedCountries].map(countryFlag).join(" ") + ` (${n})`;
+    } else {
+      label.textContent = `${n} storefronts selected`;
+    }
+    // Update count badge
+    $("#ms-selected-count").textContent = n > 0 ? `${n} selected` : "";
+    // Rebuild chips
+    renderChips();
+    // Sync checkboxes that are visible in the filtered list
+    list.querySelectorAll("input[type=checkbox]").forEach((cb) => {
+      cb.checked = selectedCountries.has(cb.value);
+    });
+  }
+
+  function renderChips() {
+    const container = $("#ms-chips");
+    container.innerHTML = "";
+    [...selectedCountries].sort().forEach((code) => {
+      const chip = document.createElement("span");
+      chip.className = "ms-chip";
+      chip.textContent = `${countryFlag(code)} ${countryName(code)}`;
+      const rm = document.createElement("button");
+      rm.className = "ms-chip-remove";
+      rm.title = `Remove ${countryName(code)}`;
+      rm.innerHTML = "✕";
+      rm.addEventListener("click", () => {
+        selectedCountries.delete(code);
+        syncMultiSelect();
+        renderItems($("#ms-search").value);
+      });
+      chip.appendChild(rm);
+      container.appendChild(chip);
+    });
+  }
+
+  // Toggle panel
+  const trigger = $("#ms-trigger");
+  const panel   = $("#ms-panel");
+  trigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const open = !panel.hidden;
+    panel.hidden = open;
+    trigger.classList.toggle("open", !open);
+    trigger.setAttribute("aria-expanded", String(!open));
+    if (!open) { $("#ms-search").focus(); }
+  });
+
+  // Close on outside click
+  document.addEventListener("click", (e) => {
+    if (!$("#ms-wrap").contains(e.target)) {
+      panel.hidden = true;
+      trigger.classList.remove("open");
+      trigger.setAttribute("aria-expanded", "false");
+    }
+  });
+
+  // Search filter
+  $("#ms-search").addEventListener("input", (e) => renderItems(e.target.value));
+
+  // Clear all
+  $("#ms-clear").addEventListener("click", () => {
+    selectedCountries.clear();
+    syncMultiSelect();
+    renderItems($("#ms-search").value);
+  });
+
+  // Initial render
+  renderItems();
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────────────────────────────
+let currentApp        = null;  // AppInfo from server
+let currentReviews    = [];    // full review list
+let currentCountrySpec = null; // null=global | "us"=single | "gb,us"=multi
+let currentCount      = 100;
+
+let cachedMetrics  = null;
+let cachedInsights = null;  // may or may not include LLM data
+
+// Dashboard state
+let dashCharts = {};        // id → Chart instance
+let dashFilter = null;      // country code or null (no filter)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Utils
+// ─────────────────────────────────────────────────────────────────────────────
+function setStatus(msg) {
+  const s = $("#status");
+  s.hidden = !msg;
+  if (msg) s.innerHTML = '<span class="spinner"></span>' + msg;
+}
+function setError(msg) {
+  const e = $("#error");
+  e.hidden = !msg;
+  if (msg) e.textContent = msg;
+}
+function el(tag, attrs = {}, ...children) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") e.className = v;
+    else if (k === "style") e.style.cssText = v;
+    else if (k.startsWith("on") && typeof v === "function") e.addEventListener(k.slice(2), v);
+    else if (v !== null && v !== undefined) e.setAttribute(k, v);
+  }
+  for (const c of children.flat(Infinity)) {
+    if (c == null) continue;
+    e.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+  }
+  return e;
+}
+function switchTab(name) {
+  document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
+  document.querySelectorAll(".tab-panel").forEach((p) => { p.hidden = p.id !== "panel-" + name; });
+}
+function initPanels() {
+  const msgs = {
+    "panel-metrics":   "Loading…",
+    "panel-insights":  "Loading…",
+    "panel-dashboard": "Loading…",
+    "panel-reviews":   "Loading…",
+  };
+  for (const [id, msg] of Object.entries(msgs)) {
+    const p = document.getElementById(id);
+    p.hidden = false;
+    p.innerHTML = "";
+    p.appendChild(el("section", { class: "card" },
+      el("div", { class: "status" }, el("span", { class: "spinner" }), msg)
+    ));
+  }
+}
+function fmtPct(n) { return (n ?? 0).toFixed(1) + "%"; }
+function stars(n) { return "★".repeat(n) + "☆".repeat(5 - n); }
+
+function countryQuery() {
+  const p = new URLSearchParams();
+  if (currentCountrySpec) {
+    if (currentCountrySpec.includes(",")) {
+      p.set("countries", currentCountrySpec);
+    } else {
+      p.set("country", currentCountrySpec);
+    }
+  }
+  p.set("count", String(currentCount));
+  return p.toString();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Load reviews
+// ─────────────────────────────────────────────────────────────────────────────
+async function loadReviews() {
+  setError(null);
+  const input = $("#app-input").value.trim();
+  if (!input) { setError("Enter an app name or App Store ID."); return; }
+
+  const count = parseInt($("#count-input").value || 100, 10);
+  const codes = [...selectedCountries].sort(); // sorted codes from multi-select
+
+  const params = new URLSearchParams();
+  if (/^\d+$/.test(input)) params.set("app_id", input);
+  else params.set("name", input);
+
+  // Build country params based on selection
+  if (codes.length === 1) {
+    params.set("country", codes[0]);
+  } else if (codes.length > 1) {
+    params.set("countries", codes.join(","));
+  }
+  // 0 selected = global fan-out, no param needed
+  params.set("count", count);
+
+  $("#load-btn").disabled = true;
+  ["panel-metrics","panel-insights","panel-dashboard","panel-reviews"].forEach((id) => {
+    document.getElementById(id).innerHTML = "";
+  });
+  document.getElementById("tab-bar").hidden = true;
+  $("#app-info").hidden = true;
+  cachedMetrics  = null;
+  cachedInsights = null;
+  dashFilter     = null;
+
+  // Compose a human-readable status message
+  let statusMsg;
+  if (codes.length === 0) {
+    statusMsg = `Collecting ${count} reviews from every Apple storefront in parallel…`;
+  } else if (codes.length === 1) {
+    statusMsg = `Collecting ${count} reviews from ${countryName(codes[0])}…`;
+  } else {
+    const preview = codes.slice(0, 3).map(countryFlag).join(" ");
+    statusMsg = `Collecting ${count} reviews from ${codes.length} storefronts (${preview}${codes.length > 3 ? "…" : ""})…`;
+  }
+  setStatus(statusMsg);
+
+  try {
+    const r = await fetch(`${API}/reviews?${params}`);
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.detail || `HTTP ${r.status}`); }
+    const data = await r.json();
+    currentApp         = data.app;
+    currentCountrySpec = codes.length === 0 ? null
+                       : codes.length === 1 ? codes[0]
+                       : codes.join(",");
+    currentCount       = count;
+    currentReviews     = data.reviews;
+    renderAppInfo(data);
+    document.getElementById("tab-bar").hidden = false;
+    initPanels();
+    loadMetrics();
+    loadInsights();
+    loadDashboard();
+    loadReviewsList();
+    switchTab("metrics");
+  } catch (e) {
+    setError(e.message || String(e));
+  } finally {
+    setStatus(null);
+    $("#load-btn").disabled = false;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// App info card
+// ─────────────────────────────────────────────────────────────────────────────
+function formatStorefrontLabel(countryField) {
+  if (!countryField || countryField === "all") return "All storefronts";
+  if (countryField.includes(",")) {
+    const codes = countryField.split(",");
+    return `${codes.length} storefronts: ${codes.map((c) => countryFlag(c) + " " + c.toUpperCase()).join(", ")}`;
+  }
+  return `${countryFlag(countryField)} ${countryName(countryField)}`;
+}
+
+function renderAppInfo(data) {
+  const info  = $("#app-info");
+  info.hidden = false;
+  info.innerHTML = "";
+  info.appendChild(el("div", { class: "app-meta" },
+    el("div", { class: "meta-item" }, el("span", { class: "meta-label" }, "App"), el("span", { class: "meta-value" }, data.app.name)),
+    el("div", { class: "meta-item" }, el("span", { class: "meta-label" }, "Publisher"), el("span", { class: "meta-value" }, data.app.artist || "—")),
+    el("div", { class: "meta-item" }, el("span", { class: "meta-label" }, "App Store ID"), el("span", { class: "meta-value" }, el("span", { class: "badge" }, data.app.app_id))),
+    el("div", { class: "meta-item" }, el("span", { class: "meta-label" }, "Storefront"), el("span", { class: "meta-value" }, formatStorefrontLabel(data.app.country))),
+    el("div", { class: "meta-item" }, el("span", { class: "meta-label" }, "Reviews collected"), el("span", { class: "meta-value big" }, String(data.reviews.length)))
+  ));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Metrics
+// ─────────────────────────────────────────────────────────────────────────────
+async function loadMetrics() {
+  const panel = document.getElementById("panel-metrics");
+  // spinner is already shown by initPanels(); leave it until data arrives
+  try {
+    if (!cachedMetrics) {
+      const r = await fetch(`${API}/metrics/${currentApp.app_id}?${countryQuery()}`);
+      if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.detail || `HTTP ${r.status}`); }
+      cachedMetrics = await r.json();
+    }
+    const data = cachedMetrics;
+    const ph = el("section", { class: "card" });
+    ph.appendChild(el("h2", {}, "Metrics"));
+    ph.appendChild(el("div", { class: "app-meta", style: "margin-bottom:1.25rem" },
+      el("div", { class: "meta-item" }, el("span", { class: "meta-label" }, "Total reviews"), el("span", { class: "meta-value big" }, String(data.total_reviews))),
+      el("div", { class: "meta-item" }, el("span", { class: "meta-label" }, "Average rating"), el("span", { class: "meta-value big" }, data.average_rating.toFixed(2) + " / 5")),
+      el("div", { class: "meta-item" }, el("span", { class: "meta-label" }, "Median rating"), el("span", { class: "meta-value big" }, data.median_rating.toFixed(1) + " / 5"))
+    ));
+    ph.appendChild(el("h3", {}, "Rating distribution"));
+    const dist = data.rating_distribution;
+    [5, 4, 3, 2, 1].forEach((star) => {
+      const pct = dist.percentages[star] ?? dist.percentages[String(star)] ?? 0;
+      const cnt = dist.counts[star]       ?? dist.counts[String(star)]       ?? 0;
+      ph.appendChild(el("div", { class: "bar-row" },
+        el("span", { class: "bar-label" }, `${star} ★`),
+        el("div", { class: "bar-track" }, el("div", { class: `bar-fill star-${star}`, style: `width:${pct}%` })),
+        el("span", { class: "bar-value" }, `${cnt}  ·  ${fmtPct(pct)}`)
+      ));
+    });
+    panel.innerHTML = "";
+    panel.appendChild(ph);
+  } catch (e) {
+    const ph = el("section", { class: "card" });
+    ph.appendChild(el("h2", {}, "Metrics"));
+    ph.appendChild(el("div", { class: "error" }, "Failed: " + e.message));
+    panel.innerHTML = "";
+    panel.appendChild(ph);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Domain card
+// ─────────────────────────────────────────────────────────────────────────────
+function renderDomainCard(d) {
+  const card = el("div", { class: "domain-card" });
+  card.appendChild(el("header", {},
+    el("span", { class: "domain-name" }, d.domain),
+    el("span", { class: `severity ${d.severity}` }, d.severity)
+  ));
+  if (d.summary) card.appendChild(el("p", { class: "summary" }, d.summary));
+  if (d.key_issues?.length) card.appendChild(el("ul", { class: "key-issues" }, ...d.key_issues.map((i) => el("li", {}, i))));
+  if (d.recommendation) card.appendChild(el("div", { class: "recommendation" }, el("strong", {}, "Recommendation: "), d.recommendation));
+  if (d.representative_quotes?.length) d.representative_quotes.forEach((q) => card.appendChild(el("p", { class: "quote" }, "“" + q + "”")));
+  return card;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Insights
+// ─────────────────────────────────────────────────────────────────────────────
+async function loadInsights() {
+  const panel = document.getElementById("panel-insights");
+  // spinner already shown by initPanels(); leave it until data arrives
+  try {
+    if (!cachedInsights) {
+      const r = await fetch(`${API}/insights/${currentApp.app_id}?${countryQuery()}`);
+      if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.detail || `HTTP ${r.status}`); }
+      cachedInsights = await r.json();
+    }
+    const data = cachedInsights;
+    const ph = el("section", { class: "card" });
+    ph.appendChild(el("h2", {}, "Insights"));
+
+    // ── Sentiment breakdown
+    ph.appendChild(el("h3", {}, "Sentiment distribution"));
+    const total = Object.values(data.sentiment.counts).reduce((a, b) => a + b, 0) || 1;
+    ["positive", "neutral", "negative"].forEach((lbl) => {
+      const cnt = data.sentiment.counts[lbl] || 0;
+      const pct = (cnt / total) * 100;
+      ph.appendChild(el("div", { class: "bar-row" },
+        el("span", { class: "bar-label" }, lbl),
+        el("div", { class: "bar-track" }, el("div", { class: `bar-fill ${lbl}`, style: `width:${pct}%` })),
+        el("span", { class: "bar-value" }, `${cnt}  ·  ${fmtPct(pct)}`)
+      ));
+    });
+
+    // ── VADER compound score — visible, coloured
+    const cmp = data.sentiment.average_compound;
+    const cmpClass = cmp > 0.05 ? "pos" : cmp < -0.05 ? "neg" : "neu";
+    const cmpTag   = cmp > 0.05 ? "positive lean" : cmp < -0.05 ? "negative lean" : "neutral";
+    ph.appendChild(el("div", { class: "vader-score" },
+      el("span", { class: "vader-label" }, "VADER compound (tone aggregate):"),
+      el("span", { class: `vader-val ${cmpClass}` }, (cmp >= 0 ? "+" : "") + cmp.toFixed(3)),
+      el("span", { class: `vader-tag ${cmpClass}` }, cmpTag)
+    ));
+
+    // ── Keywords
+    if (data.top_negative_keywords?.length) {
+      ph.appendChild(el("h3", {}, "Top keywords in negative reviews (rating ≤ 3)"));
+      ph.appendChild(el("div", { class: "chips" }, ...data.top_negative_keywords.map((k) => el("span", { class: "chip negative" }, k))));
+    }
+    if (data.top_positive_keywords?.length) {
+      ph.appendChild(el("h3", {}, "Top keywords in positive reviews (rating ≥ 4)"));
+      ph.appendChild(el("div", { class: "chips" }, ...data.top_positive_keywords.map((k) => el("span", { class: "chip positive" }, k))));
+    }
+
+    // ── Actionable insights (rule-based)
+    if (data.actionable_insights?.length) {
+      ph.appendChild(el("h3", {}, "Actionable insights (rule-based)"));
+      ph.appendChild(el("ol", { class: "actionable" }, ...data.actionable_insights.map((s) => el("li", {}, s))));
+    }
+
+    // ── Domain insights (LLM)
+    if (data.domain_insights?.length) {
+      ph.appendChild(el("hr", { class: "section-separator" }));
+      ph.appendChild(el("h3", {}, "Insights by domain"));
+      const surfaced = data.domain_insights.filter((d) => d.severity !== "none");
+      if (!surfaced.length) {
+        ph.appendChild(el("p", { class: "status" }, "No domain surfaced material issues in this sample."));
+      } else {
+        ph.appendChild(el("div", { class: "domain-grid" }, ...surfaced.map(renderDomainCard)));
+      }
+    }
+
+    // ── Regional breakdown — 2-column grid
+    if (data.regional_breakdown?.length) {
+      ph.appendChild(el("hr", { class: "section-separator" }));
+      ph.appendChild(el("h3", {}, "Insights by region"));
+      const cards = data.regional_breakdown.map((rg) => {
+        const card = el("div", { class: "region-card" });
+        card.appendChild(el("header", {},
+          el("span", { class: "domain-name" }, rg.region),
+          el("span", { class: "badge" }, `n=${rg.review_count}`)
+        ));
+        card.appendChild(el("p", { class: "summary" },
+          `Avg ${rg.average_rating.toFixed(2)}/5  ·  ` +
+          `${fmtPct(rg.sentiment_percentages.positive)} pos / ` +
+          `${fmtPct(rg.sentiment_percentages.neutral)} neu / ` +
+          `${fmtPct(rg.sentiment_percentages.negative)} neg`
+        ));
+        if (rg.top_negative_keywords?.length) {
+          card.appendChild(el("div", { class: "chips" },
+            ...rg.top_negative_keywords.slice(0, 6).map((k) => el("span", { class: "chip negative" }, k))
+          ));
+        }
+        if (rg.domain_insights?.length) {
+          const surfaced = rg.domain_insights.filter((d) => d.severity !== "none");
+          if (surfaced.length) {
+            card.appendChild(el("h3", { style: "font-size:.85rem;margin:.75rem 0 .25rem" }, "Top issues"));
+            surfaced.slice(0, 2).forEach((d) => {
+              card.appendChild(el("div", { style: "margin-bottom:.5rem" },
+                el("div", { style: "display:flex;gap:.5rem;align-items:center;margin-bottom:.25rem" },
+                  el("span", { style: "font-weight:600;font-size:.85rem" }, d.domain),
+                  el("span", { class: `severity ${d.severity}` }, d.severity)
+                ),
+                d.recommendation ? el("div", { class: "recommendation", style: "font-size:.8rem" }, d.recommendation) : null
+              ));
+            });
+          }
+        }
+        return card;
+      });
+      ph.appendChild(el("div", { class: "region-grid" }, ...cards));
+    }
+    panel.innerHTML = "";
+    panel.appendChild(ph);
+  } catch (e) {
+    const ph = el("section", { class: "card" });
+    ph.appendChild(el("h2", {}, "Insights"));
+    ph.appendChild(el("div", { class: "error" }, "Failed: " + e.message));
+    panel.innerHTML = "";
+    panel.appendChild(ph);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dashboard helpers
+// ─────────────────────────────────────────────────────────────────────────────
+function destroyChart(id) {
+  if (dashCharts[id]) { dashCharts[id].destroy(); delete dashCharts[id]; }
+}
+
+function makeChart(canvasId, config) {
+  destroyChart(canvasId);
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  dashCharts[canvasId] = new Chart(canvas, config);
+  return dashCharts[canvasId];
+}
+
+// Compute rating distribution from reviews array
+function calcRatingDist(reviews) {
+  const dist = {1:0,2:0,3:0,4:0,5:0};
+  reviews.forEach((r) => dist[r.rating]++);
+  return dist;
+}
+
+// Sentiment proxy from ratings (client-side, no VADER)
+function calcSentimentProxy(reviews) {
+  let pos = 0, neg = 0, neu = 0;
+  reviews.forEach((r) => {
+    if (r.rating >= 4) pos++;
+    else if (r.rating <= 2) neg++;
+    else neu++;
+  });
+  return { pos, neg, neu };
+}
+
+// Group reviews by country code → { code: count }
+function calcByCountry(reviews) {
+  const m = {};
+  reviews.forEach((r) => { const c = r.country || "??"; m[c] = (m[c] || 0) + 1; });
+  return m;
+}
+
+// Group by month from reviews.updated
+function calcTimeline(reviews) {
+  const m = {};
+  reviews.forEach((r) => {
+    if (!r.updated) return;
+    const d = new Date(r.updated);
+    if (isNaN(d)) return;
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+    m[key] = (m[key] || 0) + 1;
+  });
+  return Object.fromEntries(Object.entries(m).sort());
+}
+
+const RATING_COLORS = ["#dc2626","#f97316","#eab308","#84cc16","#16a34a"];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dashboard render
+// ─────────────────────────────────────────────────────────────────────────────
+const CHART_H = 260; // uniform canvas height for every chart
+
+async function loadDashboard() {
+  const panel = document.getElementById("panel-dashboard");
+  // spinner already shown by initPanels(); leave it until data arrives
+
+  try {
+    if (!cachedMetrics) {
+      const r = await fetch(`${API}/metrics/${currentApp.app_id}?${countryQuery()}`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      cachedMetrics = await r.json();
+    }
+    if (!cachedInsights) {
+      const r = await fetch(`${API}/insights/${currentApp.app_id}?${countryQuery()}&use_llm=false`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      cachedInsights = await r.json();
+    }
+  } catch (e) {
+    const ph = el("section", { class: "card" });
+    ph.appendChild(el("h2", {}, "Dashboard"));
+    ph.appendChild(el("div", { class: "error" }, "Failed to load data: " + e.message));
+    panel.innerHTML = "";
+    panel.appendChild(ph);
+    return;
+  }
+
+  const ph = el("section", { class: "card" });
+  ph.appendChild(el("h2", {}, "Dashboard"));
+
+  // Filter indicator (updated by renderDashboardCharts)
+  const filterBar = el("div", { id: "dash-filter-bar", style: "min-height:1.75rem;margin-bottom:.625rem" });
+  ph.appendChild(filterBar);
+
+  const grid = el("div", { class: "chart-grid" });
+  ph.appendChild(grid);
+
+  function chartCard(id, title, opts = {}) {
+    const card = el("div", { class: "chart-card", id: `card-${id}` });
+    if (opts.dim) card.dataset.globalOnly = "1"; // fades when filter active
+    card.appendChild(el("h4", {}, title));
+    const wrap = el("div", { style: `position:relative;height:${CHART_H}px` });
+    wrap.appendChild(el("canvas", { id }));
+    card.appendChild(wrap);
+    grid.appendChild(card);
+  }
+
+  chartCard("ch-ratings",  "Rating Distribution");
+  chartCard("ch-sentiment","Sentiment");
+  chartCard("ch-timeline", "Reviews Over Time");
+  chartCard("ch-countries","Reviews by Country");
+  panel.innerHTML = "";
+  panel.appendChild(ph);
+
+  renderDashboardCharts();
+}
+
+function renderDashboardCharts() {
+  // Filtered reviews for country-aware charts
+  const reviews = dashFilter
+    ? currentReviews.filter((r) => r.country === dashFilter)
+    : currentReviews;
+
+  // ── Update filter indicator bar
+  const filterBar = document.getElementById("dash-filter-bar");
+  if (filterBar) {
+    filterBar.innerHTML = "";
+    if (dashFilter) {
+      const chip = el("span", { class: "filter-chip" },
+        `${countryFlag(dashFilter)} ${countryName(dashFilter)} `,
+        el("button", { class: "clear-btn", title: "Clear filter", onclick: () => { dashFilter = null; renderDashboardCharts(); } }, "✕")
+      );
+      const note = el("span", { style: "font-size:.75rem;color:var(--muted);margin-left:.5rem" },
+        `Showing ${reviews.length} of ${currentReviews.length} reviews · Domain & Region charts show global data`
+      );
+      filterBar.appendChild(chip);
+      filterBar.appendChild(note);
+    }
+  }
+
+  // ── Dim / undim global-only chart cards
+  document.querySelectorAll("[data-global-only]").forEach((card) => {
+    card.style.opacity    = dashFilter ? "0.35" : "1";
+    card.style.transition = "opacity .25s";
+  });
+
+  // ── Rating distribution
+  const ratingDist = calcRatingDist(reviews);
+  makeChart("ch-ratings", {
+    type: "bar",
+    data: {
+      labels: ["1 ★","2 ★","3 ★","4 ★","5 ★"],
+      datasets: [{
+        label: "Reviews",
+        data: [1,2,3,4,5].map((s) => ratingDist[s]),
+        backgroundColor: RATING_COLORS,
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+    }
+  });
+
+  // ── Sentiment — use VADER counts only when unfiltered; proxy when filtered
+  let sentLabels, sentData;
+  if (!dashFilter && cachedInsights?.sentiment) {
+    const s = cachedInsights.sentiment;
+    sentLabels = ["Positive","Neutral","Negative"];
+    sentData   = [s.counts.positive||0, s.counts.neutral||0, s.counts.negative||0];
+  } else {
+    const p = calcSentimentProxy(reviews);
+    sentLabels = ["Positive (4-5★)","Neutral (3★)","Negative (1-2★)"];
+    sentData   = [p.pos, p.neu, p.neg];
+  }
+  makeChart("ch-sentiment", {
+    type: "doughnut",
+    data: {
+      labels: sentLabels,
+      datasets: [{ data: sentData, backgroundColor: ["#16a34a","#9ca3af","#dc2626"], hoverOffset: 8, borderWidth: 2 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "bottom", labels: { padding: 12, font: { size: 12 } } },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const total = ctx.dataset.data.reduce((a,b)=>a+b,0)||1;
+              return ` ${ctx.label}: ${ctx.raw} (${((ctx.raw/total)*100).toFixed(1)}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // ── Reviews over time (by month)
+  const timeline = calcTimeline(reviews);
+  const tlKeys = Object.keys(timeline);
+  if (tlKeys.length > 1) {
+    makeChart("ch-timeline", {
+      type: "line",
+      data: {
+        labels: tlKeys,
+        datasets: [{
+          label: "Reviews",
+          data: Object.values(timeline),
+          borderColor: "#2563eb",
+          backgroundColor: "rgba(37,99,235,.08)",
+          tension: 0.3,
+          fill: true,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+      }
+    });
+  } else {
+    const c = document.getElementById("ch-timeline");
+    if (c) {
+      // clear stale note if re-rendering
+      c.closest(".chart-card").querySelectorAll(".chart-note").forEach(n => n.remove());
+      c.closest(".chart-card").appendChild(el("p", { class: "chart-note" }, "Not enough date data."));
+    }
+  }
+
+  // ── Top 10 countries — always from ALL reviews, selection highlighted
+  const allByCnt = calcByCountry(currentReviews);
+  const top10 = Object.entries(allByCnt).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const top10Codes = top10.map(([c]) => c);
+  makeChart("ch-countries", {
+    type: "bar",
+    data: {
+      labels: top10.map(([c]) => `${countryFlag(c)} ${countryName(c)}`),
+      datasets: [{
+        label: "Reviews",
+        data: top10.map(([,n]) => n),
+        backgroundColor: top10Codes.map((c) =>
+          !dashFilter       ? "#3b82f6" :
+          c === dashFilter  ? "#1d4ed8" : "rgba(59,130,246,0.2)"
+        ),
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      indexAxis: "y",
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (ctx) => ` ${ctx.raw} reviews` } }
+      },
+      scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+      onClick: (evt, elements) => {
+        if (!elements.length) return;
+        const code = top10Codes[elements[0].index];
+        dashFilter = dashFilter === code ? null : code;
+        renderDashboardCharts();
+      },
+      onHover: (evt) => { evt.native.target.style.cursor = "pointer"; },
+    }
+  });
+
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reviews list (paginated)
+// ─────────────────────────────────────────────────────────────────────────────
+let reviewPage = 0;
+const PAGE_SIZE = 20;
+let reviewQuery = "";
+let filteredReviews = [];
+
+function loadReviewsList() {
+  const panel = document.getElementById("panel-reviews");
+  filteredReviews = [...currentReviews];
+  reviewPage = 0;
+
+  const section = el("section", { class: "card" });
+  panel.innerHTML = "";
+  panel.appendChild(section);
+
+  // Header row: title + download button
+  const hdrRow = el("div", { style: "display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem" });
+  hdrRow.appendChild(el("h2", { style: "margin:0" }, `Reviews (${currentReviews.length} total)`));
+  const dlBtn = el("button", { class: "btn btn-secondary" }, "⬇ Download CSV");
+  dlBtn.addEventListener("click", downloadCSV);
+  hdrRow.appendChild(dlBtn);
+  section.appendChild(hdrRow);
+
+  // Search bar
+  const searchRow = el("div", { class: "review-search" });
+  const searchInput = el("input", { placeholder: "Search title or text…", type: "search" });
+  searchRow.appendChild(searchInput);
+
+  // Rating filter
+  const ratingSel = el("select", { style: "width:auto;flex-shrink:0" });
+  ratingSel.appendChild(new Option("All ratings", ""));
+  [5,4,3,2,1].forEach((s) => ratingSel.appendChild(new Option(`${stars(s)} (${s}★)`, s)));
+  searchRow.appendChild(ratingSel);
+
+  // Country filter
+  const countrySel = el("select", { style: "width:auto;flex-shrink:0;max-width:180px" });
+  countrySel.appendChild(new Option("All countries", ""));
+  const uniq = [...new Set(currentReviews.map((r) => r.country).filter(Boolean))].sort();
+  uniq.forEach((c) => countrySel.appendChild(new Option(`${countryFlag(c)} ${countryName(c)}`, c)));
+  searchRow.appendChild(countrySel);
+
+  section.appendChild(searchRow);
+
+  const listEl = el("div", { class: "review-list" });
+  section.appendChild(listEl);
+
+  const pagEl = el("div", { class: "pagination" });
+  section.appendChild(pagEl);
+
+  function applyFilters() {
+    const q    = searchInput.value.toLowerCase();
+    const star = ratingSel.value ? parseInt(ratingSel.value) : null;
+    const cntry = countrySel.value;
+    filteredReviews = currentReviews.filter((r) => {
+      if (star !== null && r.rating !== star) return false;
+      if (cntry && r.country !== cntry) return false;
+      if (q && !(r.title.toLowerCase().includes(q) || r.text.toLowerCase().includes(q))) return false;
+      return true;
+    });
+    reviewPage = 0;
+    renderPage();
+  }
+
+  function renderPage() {
+    listEl.innerHTML = "";
+    pagEl.innerHTML  = "";
+    const start = reviewPage * PAGE_SIZE;
+    const slice = filteredReviews.slice(start, start + PAGE_SIZE);
+    const total = filteredReviews.length;
+
+    if (!slice.length) {
+      listEl.appendChild(el("p", { class: "status" }, "No reviews match the current filters."));
+      return;
+    }
+
+    slice.forEach((r) => {
+      const starColor = r.rating >= 4 ? "#16a34a" : r.rating <= 2 ? "#dc2626" : "#eab308";
+      const item = el("div", { class: "review-item" });
+
+      const header = el("div", { class: "review-item-header" });
+      header.appendChild(el("span", { class: "review-stars", style: `color:${starColor}` }, stars(r.rating)));
+      if (r.country) header.appendChild(el("span", { class: "review-country" }, `${countryFlag(r.country)} ${r.country.toUpperCase()}`));
+      if (r.version) header.appendChild(el("span", { class: "review-version" }, `v${r.version}`));
+      if (r.updated) {
+        const d = new Date(r.updated);
+        if (!isNaN(d)) header.appendChild(el("span", { class: "review-date" }, d.toLocaleDateString()));
+      }
+      item.appendChild(header);
+
+      if (r.title) item.appendChild(el("div", { class: "review-title" }, r.title));
+      item.appendChild(el("div", { class: "review-author" }, "by " + (r.author || "anonymous")));
+
+      const textEl = el("div", { class: "review-text clamped" }, r.text || "");
+      item.appendChild(textEl);
+
+      if ((r.text || "").length > 200) {
+        let expanded = false;
+        const btn = el("button", { class: "expand-btn" }, "Show more");
+        btn.addEventListener("click", () => {
+          expanded = !expanded;
+          textEl.classList.toggle("clamped", !expanded);
+          btn.textContent = expanded ? "Show less" : "Show more";
+        });
+        item.appendChild(btn);
+      }
+
+      listEl.appendChild(item);
+    });
+
+    // Pagination controls
+    const totalPages = Math.ceil(total / PAGE_SIZE);
+    if (totalPages > 1) {
+      const prevBtn = el("button", { class: "btn btn-secondary" }, "← Prev");
+      prevBtn.disabled = reviewPage === 0;
+      prevBtn.addEventListener("click", () => { reviewPage--; renderPage(); });
+
+      const nextBtn = el("button", { class: "btn btn-secondary" }, "Next →");
+      nextBtn.disabled = reviewPage >= totalPages - 1;
+      nextBtn.addEventListener("click", () => { reviewPage++; renderPage(); });
+
+      pagEl.appendChild(prevBtn);
+      pagEl.appendChild(el("span", { class: "page-info" }, `${reviewPage + 1} / ${totalPages}  (${total} reviews)`));
+      pagEl.appendChild(nextBtn);
+    }
+  }
+
+  let searchTimer;
+  searchInput.addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(applyFilters, 250); });
+  ratingSel.addEventListener("change", applyFilters);
+  countrySel.addEventListener("change", applyFilters);
+
+  renderPage();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CSV download
+// ─────────────────────────────────────────────────────────────────────────────
+function downloadCSV() {
+  window.location.href = `${API}/reviews/${currentApp.app_id}/download?${countryQuery()}&fmt=csv`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Event wiring
+// ─────────────────────────────────────────────────────────────────────────────
+$("#load-btn").addEventListener("click", loadReviews);
+$("#app-input").addEventListener("keydown", (e) => { if (e.key === "Enter") loadReviews(); });
+
+document.querySelectorAll(".tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+});
+</script>
+</body>
+</html>

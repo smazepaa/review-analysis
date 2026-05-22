@@ -1,0 +1,17 @@
+__pycache__
+*.py[cod]
+*.egg-info
+.venv
+venv
+env
+.pytest_cache
+.coverage
+.git
+.gitignore
+.idea
+.vscode
+.DS_Store
+reports
+tests
+*.md
+!README.md
